@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=stable
 ENV N8N_RELEASE_DATE=${N8N_RELEASE_DATE}
 RUN set -eux; \
-	npm install -g --omit=dev n8n@${N8N_VERSION} --ignore-scripts && \
+	npm install -g --omit=dev n8n@${N8N_VERSION} \
 	npm rebuild --prefix=/usr/local/lib/node_modules/n8n sqlite3 && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/@n8n/chat && \
 	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-design-system && \
