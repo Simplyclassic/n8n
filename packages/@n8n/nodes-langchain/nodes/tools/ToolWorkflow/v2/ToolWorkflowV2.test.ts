@@ -13,6 +13,10 @@ import { WorkflowToolService } from './utils/WorkflowToolService';
 
 // Mock ISupplyDataFunctions interface
 function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDataFunctions {
+	let runIndex = 0;
+	const getNextRunIndex = jest.fn(() => {
+		return runIndex++;
+	});
 	return {
 		runIndex: 0,
 		getNodeParameter: jest.fn(),
@@ -26,6 +30,7 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		getInputData: jest.fn(),
 		getMode: jest.fn(),
 		getRestApiUrl: jest.fn(),
+		getNextRunIndex,
 		getTimezone: jest.fn(),
 		getWorkflow: jest.fn(),
 		getWorkflowStaticData: jest.fn(),
@@ -56,6 +61,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 	describe('createTool', () => {
 		it('should create a basic dynamic tool when schema is not used', async () => {
 			const toolParams = {
+				ctx: context,
 				name: 'TestTool',
 				description: 'Test Description',
 				itemIndex: 0,
@@ -70,6 +76,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 		it('should create a tool that can handle successful execution', async () => {
 			const toolParams = {
+				ctx: context,
 				name: 'TestTool',
 				description: 'Test Description',
 				itemIndex: 0,
@@ -112,6 +119,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 		it('should handle errors during tool execution', async () => {
 			const toolParams = {
+				ctx: context,
 				name: 'TestTool',
 				description: 'Test Description',
 				itemIndex: 0,
@@ -184,6 +192,66 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			);
 
 			expect(result.response).toBe(TEST_RESPONSE);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should successfully execute workflow and return first item of many', async () => {
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const TEST_RESPONSE_1 = { msg: 'test response 1' };
+			const TEST_RESPONSE_2 = { msg: 'test response 2' };
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE_1 }, { json: TEST_RESPONSE_2 }]],
+				executionId: 'test-execution',
+			};
+
+			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await service['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toBe(TEST_RESPONSE_1);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should successfully execute workflow and return all items', async () => {
+			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const TEST_RESPONSE_1 = { msg: 'test response 1' };
+			const TEST_RESPONSE_2 = { msg: 'test response 2' };
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE_1 }, { json: TEST_RESPONSE_2 }]],
+				executionId: 'test-execution',
+			};
+
+			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+				undefined,
+			);
+
+			expect(result.response).toEqual([{ json: TEST_RESPONSE_1 }, { json: TEST_RESPONSE_2 }]);
 			expect(result.subExecutionId).toBe('test-execution');
 		});
 
