@@ -1,2 +1,2 @@
-web: ./node_modules/.bin/n8n start
-worker: ./node_modules/.bin/n8n worker --concurrency=5
+web: node packages/n8n-main/dist/index.js start
+worker: node packages/n8n-main/dist/index.js worker --concurrency=5
